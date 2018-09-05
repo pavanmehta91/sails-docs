@@ -57,9 +57,15 @@ Next, we define the specification for the user model, like so:
 var userCollection = Waterline.Collection.extend({
   identity: 'user',
   datastore: 'default',
+  primaryKey: 'id',
+  
   attributes: {
-    firstName: 'string',
-    lastName: 'string',
+    id: {
+        type: 'number',
+        autoMigrations: {autoIncrement: true}
+    },
+    firstName: {type:'string'},
+    lastName: {type:'string'},
 
     // Add a reference to Pets
     pets: {
@@ -86,10 +92,16 @@ Obviously we now need to define what a pet is.
 var petCollection = Waterline.Collection.extend({
   identity: 'pet',
   datastore: 'default',
+  primaryKey: 'id'
+  
   attributes: {
-    breed: 'string',
-    type: 'string',
-    name: 'string',
+    id: {
+        type: 'number',
+        autoMigrations: {autoIncrement: true}
+    },
+    breed: {type:'string'},
+    type: {type:'string'},
+    name: {type:'string'},
 
     // Add a reference to User
     owner: {
@@ -106,8 +118,8 @@ Most of the structure is the same as for the user. However, the `owner` field sp
 Next we have some more boring setup chores.
 
 ```js
-waterline.loadCollection(userCollection);
-waterline.loadCollection(petCollection);
+waterline.registerModel(userCollection);
+waterline.registerModel(petCollection);
 ```
 
 Here we are adding the model specifications into the `waterline` instance itself.
@@ -133,7 +145,7 @@ So here we specify the `adapters` we are going to use (one for each type of stor
 Ok, it's time to actually crank things up and work with the datastore. First we need to initialize the `waterline` instance, and then we can go to work.
 
 ```js
-waterline.initialize(config, function (err, ontology) {
+waterline.initialize(config, (err, ontology)=>{
   if (err) {
     console.error(err);
     return;
@@ -143,13 +155,14 @@ waterline.initialize(config, function (err, ontology) {
   var User = ontology.collections.user;
   var Pet = ontology.collections.pet;
 
-  try {
+  // Since we're using `await`, we'll scope our selves an async IIFE:
+  (async ()=>{
     // First we create a user
     var user = await User.create({
       firstName: 'Neil',
       lastName: 'Armstrong'
     });
-	  
+
     // Then we create the pet
     var pet = await Pet.create({
       breed: 'beagle',
@@ -157,15 +170,18 @@ waterline.initialize(config, function (err, ontology) {
       name: 'Astro',
       owner: user.id
     });
-		
+
     // Then we grab all users and their pets
     var users = await User.find().populate('pets');
-    console.dir(users);
-    
-  } catch (err) {
-    // If any errors occur execution jumps to the catch block.
-    console.log(err);
-  }
+    console.log(users);
+  })()
+  .then(()=>{
+    // All done.
+  })
+  .catch((err)=>{
+    console.error(err);
+  });//_∏_
+  
 });
 ```
 
